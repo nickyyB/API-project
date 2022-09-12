@@ -1,0 +1,146 @@
+version: '3'
+
+services:
+
+  authenticationDatabase:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+    networks:
+      - authNetwork
+    volumes:
+      - authVolume:/var/lib/mysql
+
+
+  authenticationDBMigration:
+    image: authenticationdbmigration
+    environment:
+      - DATABASE_URL=authenticationDatabase
+    depends_on:
+      authenticationDatabase:
+        condition: service_healthy
+    networks:
+      - authNetwork
+
+  authentication:
+    image: authentication
+    environment:
+      - DATABASE_URL=authenticationDatabase
+    depends_on:
+      - authenticationDBMigration
+    ports:
+      - 5002:5002
+    networks:
+      - authNetwork
+
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - authNetwork
+      - shopNetwork
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+    networks:
+      - supplierNetwork
+      - deamonNetworkSec
+
+  shopDatabase:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+    networks:
+      - shopNetwork
+      - buyerNetwork
+      - deamonNetwork
+      - adminNetwork
+    volumes:
+        - shopVolume:/var/lib/mysql
+
+  shopDBMigration:
+    image: shopdbmigration
+    environment:
+      - DATABASE_URL=shopDatabase
+      - REDIS_URL=redis
+    depends_on:
+      shopDatabase:
+        condition: service_healthy
+    networks:
+      - shopNetwork
+
+  admin:
+    image: admin
+    environment:
+      - DATABASE_URL=shopDatabase
+      - REDIS_URL=redis
+    depends_on:
+      - shopDBMigration
+    ports:
+      - 5005:5005
+    networks:
+      - adminNetwork
+
+  buyer:
+    image: buyer
+    #deploy:
+    #  replicas: 3
+    environment:
+      - DATABASE_URL=shopDatabase
+      - REDIS_URL=redis
+    depends_on:
+      - shopDBMigration
+    ports:
+      - 5004:5004
+    networks:
+      - buyerNetwork
+
+  supplier:
+    image: supplier
+    #deploy:
+    #  replicas: 3
+    environment:
+      - DATABASE_URL=shopDatabase
+      - REDIS_URL=redis
+    depends_on:
+      - shopDBMigration
+    ports:
+      - 5001:5001
+    networks:
+      - supplierNetwork
+
+  deamon:
+    image: deamon
+    environment:
+      - DATABASE_URL=shopDatabase
+      - REDIS_URL=redis
+    depends_on:
+      - shopDBMigration
+    ports:
+      - 5003:5003
+    networks:
+      - deamonNetwork
+      - deamonNetworkSec
+
+networks:
+  authNetwork:
+  shopNetwork:
+
+  buyerNetwork:
+  supplierNetwork:
+  deamonNetwork:
+  deamonNetworkSec:
+  adminNetwork:
+volumes:
+  authVolume:
+  shopVolume:
