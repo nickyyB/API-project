@@ -1,2 +1,2 @@
 # API-project
-Key words: API, Python, Flask, Docker, Swarm
+Key words: API, Python, Flask, Docker, Redis, Docker Swarm
